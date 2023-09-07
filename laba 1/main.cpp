@@ -42,6 +42,10 @@ int vector_sum(std::vector<int> in) {
     return s;
 }
 
+float f_derivative(float a, func F) {
+    float delta = 0.0001;
+    return (F(a + delta) - F(a - delta))/(2*delta);
+}
 
 
 std::vector<float> Summ(std::vector<int> X, std::vector<std::vector<float>> W) {
@@ -91,7 +95,7 @@ std::map<std::string, std::vector<float>> forvard(std::vector<int> X, std::vecto
     return out;
 }
 
-void backvard(std::map<std::string, std::vector<float>> out, std::vector<std::vector<float>>& W, std::vector<int> X) {
+void backvard(std::map<std::string, std::vector<float>> out, std::vector<std::vector<float>>& W, std::vector<int> X, func F) {
 
     float step = 0.001;
 
@@ -102,7 +106,7 @@ void backvard(std::map<std::string, std::vector<float>> out, std::vector<std::ve
         {   
            
             // W[j][i];
-            float d_out_dwji = X[j] * f_sigmoid_der(out["SUM"][i]);
+            float d_out_dwji = X[j] * f_derivative(out["SUM"][i], F);
 
             float d_L_d_wji = dL_d_out * d_out_dwji;
             W[j][i] -= step * d_L_d_wji;
@@ -115,8 +119,8 @@ void backvard(std::map<std::string, std::vector<float>> out, std::vector<std::ve
 
 
 int main() {
-    std::vector<int> image_1 = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1};
-    std::vector<float> image_1_pred = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+    std::vector<int> image_1 = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1};
+    std::vector<float> image_1_pred = {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     std::vector<std::vector <int>> images;
     std::vector<std::vector <float>> images_pred;
 
@@ -137,16 +141,18 @@ int main() {
     }
 
     float err = 100;
-    int epocha = 1000;
+    int epocha = 100000;
+    
+    func F = &f_sigmoid;
     
     while (epocha) {
         for (int i = 0; i < images.size(); i++)
         {   
             
             
-            auto out = forvard(images[i], W, &f_sigmoid, images_pred[i]);
+            auto out = forvard(images[i], W, F, images_pred[i]);
             
-            backvard(out, W, images[i]);
+            backvard(out, W, images[i], F);
             
         }
         epocha--;
