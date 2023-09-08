@@ -2,6 +2,9 @@
 #include <vector>
 #include <map>
 #include <math.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 
 typedef float (*func)(float a);
 
@@ -106,7 +109,7 @@ void backvard(std::map<std::string, std::vector<float>> out, std::vector<std::ve
         {   
            
             // W[j][i];
-            float d_out_dwji = X[j] * f_derivative(out["SUM"][i], F);
+            float d_out_dwji = X[j] * f_sigmoid_der(out["SUM"][i]); //, F);
 
             float d_L_d_wji = dL_d_out * d_out_dwji;
             W[j][i] -= step * d_L_d_wji;
@@ -119,17 +122,49 @@ void backvard(std::map<std::string, std::vector<float>> out, std::vector<std::ve
 
 
 int main() {
-    std::vector<int> image_1 = {0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1};
+    std::vector<int> image_1 = {0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1};
     std::vector<float> image_1_pred = {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int w, h, nrChanel;
+
     std::vector<std::vector <int>> images;
     std::vector<std::vector <float>> images_pred;
 
-    images.push_back(image_1);
-    images_pred.push_back(image_1_pred);
+    for(int im = 0; im < 10; im++) {
+        std::vector<int> image_test;
+        std::cout << "training_data/" + std::to_string(im) + ".bmp" << std::endl;
+        uint8_t *data  = stbi_load(("training_data/" + std::to_string(im) + ".bmp").c_str(), &w, &h, &nrChanel, 4);
+        for (int i = 0; i < h; i++) {
+            for (int j = 0; j < w; j+=1) {
+                if (static_cast<int>(data[i*16 + j*4 + 0]) == 0) {
+                    image_test.push_back(1);
+                    std::cout << 1;
+                } else {
+                    image_test.push_back(0);
+                    std::cout << 0;
+                }
+            }
+            std::cout << std::endl;
+        }
+        images.push_back(image_test);
+        std::vector<float> image_pred_test;
+        for (int i = 0; i < 10; i++) {
+            if (i == im) {
+                image_pred_test.push_back(1);
+            } else {
+                image_pred_test.push_back(0);
+            }
+        }
+        images_pred.push_back(image_pred_test);
+    }
+
+    
+
+    // images.push_back(image_1);
+    // images_pred.push_back(image_1_pred);
 
     std::vector<std::vector<float>> W;
     
-    int M = 11; // количество нейронов
+    int M = 10; // количество нейронов
     for (size_t i = 0; i < images[0].size(); i++)
     {
         W.push_back({});
@@ -141,7 +176,7 @@ int main() {
     }
 
     float err = 100;
-    int epocha = 100000;
+    int epocha = 10000;
     
     func F = &f_sigmoid;
     
@@ -160,7 +195,7 @@ int main() {
     }
     
     std::vector<int> test = {0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1};
-    auto out = forvard(images[0],  W, &f_sigmoid, images_pred[0]);
+    auto out = forvard(image_1,  W, &f_sigmoid, image_1_pred);
 
     for (size_t i = 0; i < out["PRED"].size(); i++)
     {

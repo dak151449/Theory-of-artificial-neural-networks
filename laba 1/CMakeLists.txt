@@ -5,4 +5,4 @@ set(CMAKE_CXX_STANDARD 17)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 add_executable(laba1
-                    main.cpp)
+                    main.cpp "stb_image.h")
