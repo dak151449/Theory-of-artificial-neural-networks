@@ -8,14 +8,14 @@
 namespace plt = matplotlibcpp;
 
 
-typedef float (*func)(float a);
-
+typedef float (*func)(double a);
+typedef float (*func2)(float a, float b);
 
 class Func_image {
     public:
         Func_image(){};
         static void plot_image(std::vector<std::vector<double>> image);
-        static void plot_image(std::vector<std::vector<float>> image, std::string name, int index);
+        static void plot_image(std::vector<std::vector<double>> image, std::string name, int index);
         static void plot_image(func F);
         static void show();
 };
