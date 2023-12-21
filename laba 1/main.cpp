@@ -6,7 +6,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "Func_image.h"
-
+#include "Neron.h"
 
 double step;
 
@@ -57,11 +57,6 @@ int vector_sum(std::vector<int> in) {
 
 double f_derivative(double a, std::function<double(double)> F) {
     double delta = 1e-10;
-    //F = f_sigmoid;
-    //std::cout << "f_derivative " << (F(a + delta) - F(a-delta))/((double)2.0*delta) << "    " << f_lin_der(a) << " F: " << F(a) << " Real: " << a << std::endl;
-    //return f_lin_der(a);
-    //return f_sigmoid_der(a);
-    //return f_relu_der(a);
     return (F(a + delta) - F(a-delta))/((double)2.0*delta);
 }
 
@@ -92,65 +87,20 @@ std::vector<double> activation_func(std::vector<double> S, std::function<double(
     return out;
 }
 
-
-double Err_f(double a) {
-    return abs(a) / 10.0;
-}
-
-std::vector<double> Err(std::vector<double> Y, std::vector<double> Z) {
-    std::vector<double> out;
-    for (int i = 0; i < Y.size(); i++) {
-        out.push_back(double(-2.0)*(Y[i]-Z[i]));
-    }
-    return out;
-}
-
-std::vector<double> Err_abs(std::vector<double> Y, std::vector<double> Z) {
-    std::vector<double> out;
-    for (int i = 0; i < Y.size(); i++) {
-        out.push_back(abs(Y[i]-Z[i]));
-    }
-    return out;
-}
-
-std::map<std::string, std::vector<double>> forvard(std::vector<int> X, std::vector<std::vector<double>> W, std::function<double(double)> F, std::vector<double> Y_pred) {
-
-    std::map<std::string, std::vector<double>> out;
-    std::vector<double> Y = Summ(X, W);
-    std::vector<double> Z = activation_func(Y, F);
-    
-    
-    //int Y_pred = vector_sum(Z);
-    out["SUM"] = Y;
-    out["PRED"] = Z;
-    out["ERR"] = Err(Y_pred, Z);
-    out["loss"] = Err_abs(Y_pred, Z);
-    // for(auto elem: out["ERR"]) {
-    //     std::cout << elem << " ";
-    // }
-    // std::cout << std::endl;
-    return out;
-}
-
-void backvard(std::map<std::string, std::vector<double>> out, std::vector<std::vector<double>>& W, std::vector<int> X, std::function<double(double)> F) {
-
-    
-
-    for (size_t i = 0; i < W[0].size(); i++) // количество нейронов 
+void forvard_test(std::vector<int> X, std::vector<Neron>& Nerons, std::function<double(double)> F, std::vector<double> Y_true) {
+    for(int i = 0; i < Nerons.size(); i++) 
     {
-        double dL_d_out = out["ERR"][i];
-        for (size_t j = 0; j < W.size(); j++) // количество весов к одному нейрону i - index нейрона 
-        {   
-            // W[j][i];
-            // double d_out_dwji = X[j] * f_sigmoid_der(out["SUM"][i]);
-            double d_out_dwji = double(X[j]) * f_derivative(out["SUM"][i], F);
-            double d_L_d_wji = dL_d_out * d_out_dwji;
-            W[j][i] -= step * d_L_d_wji;
-            //std::cout << "DELTA: " << f_derivative(out["SUM"][i], F) << std::endl;
-        }
-        
+        Nerons[i].Summ(X);
+        Nerons[i].Activation(F);
+        Nerons[i].Err_der(Y_true[i]);
     }
-    
+}
+
+void backvard_test(std::vector<int> X, std::vector<Neron>& Nerons, std::function<double(double)> F) {
+    for(int i = 0; i < Nerons.size(); i++) 
+    {
+        Nerons[i].Update_weights(X, F, step);
+    }
 }
 
 
@@ -206,14 +156,9 @@ int main() {
         std::vector<std::vector<double>> W;
     
         int M = 10; // количество нейронов
-        for (size_t i = 0; i < images[0].size(); i++)
-        {
-            W.push_back({});
-            for (size_t j = 0; j < M; j++)
-            {
-                W[i].push_back(0);
-            }
-            
+        std::vector<Neron> Nerons;
+        for (int j = 0; j < M; j++) {
+            Nerons.push_back(Neron(images[0].size(), f_derivative));
         }
         if (F_name[i] == "sigmoid" || F_name[i] == "gipthan") {
             step = 0.01;
@@ -226,21 +171,20 @@ int main() {
         }
         std::vector<double> loss;
         std::vector<double> epochs;
-        int epocha = 1000;
+        int epocha = 100000;
         int EP = epocha;
         std::function<double(double)> F = Fs[i];
         
         while (epocha) {
             double S = 0;
             int len = 0;
-            for (int i = 0; i < images.size(); i++)
+            for (int im = 0; im < images.size(); im++)
             {   
-                auto out = forvard(images[i], W, F, images_pred[i]);
-                backvard(out, W, images[i], F);
-                out = forvard(images[i], W, F, images_pred[i]);
-                len = out["ERR"].size();
-                for (int err = 0; err < out["ERR"].size(); err++) {
-                    double a = out["loss"][err];
+                forvard_test(images[im], Nerons, F, images_pred[im]);
+                backvard_test(images[im], Nerons, F);
+                //len = out["ERR"].size();
+                for (int err = 0; err < Nerons.size(); err++) {
+                    double a = Nerons[err].err;
                     S += a/10;
                 }
                 //S += out["loss"][i];
@@ -255,30 +199,21 @@ int main() {
             std::cout << elem << " ";
         }
 
-        // std::cout << std::endl << std::endl;
-
-        // for(int j = 0; j < W.size(); j++) {
-        //     for (auto elem: W[j])
-        //     {
-        //         std::cout << elem << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
         std::vector<std::vector<double>> in;
         in.push_back(epochs);
         in.push_back(loss);
         Func_image::plot_image(in, F_name[i], i+1);
 
-        std::cout << std::endl;
-        for(int number = 0; number < 10; number++) {
-            auto out = forvard(images[number],  W, F, images_pred[number]);
-            std::cout << number << ": "; 
-            for (size_t i = 0; i < out["PRED"].size(); i++)
-            {
-                std::cout <<  out["PRED"][i] << " ";
-            }   
-            std::cout << std::endl;
-        }
+        // std::cout << std::endl;
+        // for(int number = 0; number < 10; number++) {
+        //     auto out = forvard(images[number],  W, F, images_pred[number]);
+        //     std::cout << number << ": "; 
+        //     for (size_t i = 0; i < out["PRED"].size(); i++)
+        //     {
+        //         std::cout <<  out["PRED"][i] << " ";
+        //     }   
+        //     std::cout << std::endl;
+        // }
     }
     Func_image::show();
     return 0;
